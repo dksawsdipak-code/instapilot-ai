@@ -22,6 +22,7 @@ class User(Base):
     instagram_accounts = relationship("InstagramAccount", back_populates="user")
     posts = relationship("Post", back_populates="user")
     subscription = relationship("Subscription", back_populates="user", uselist=False)
+    creator_profile = relationship("CreatorProfile", back_populates="user", uselist=False)
     
     def set_password(self, password: str):
         """Hash and set the password."""
@@ -39,6 +40,23 @@ class InstagramAccount(Base):
     
     user = relationship("User", back_populates="instagram_accounts")
     posts = relationship("Post", back_populates="account")
+
+class CreatorProfile(Base):
+    __tablename__ = "creator_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True)
+    niche = Column(String, default="")
+    creator_type = Column(String, default="")
+    target_audience = Column(String, default="")
+    growth_goal = Column(String, default="")
+    brand_tone = Column(String, default="")
+    offer = Column(String, default="")
+    content_pillars = Column(String, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="creator_profile")
 
 class Post(Base):
     __tablename__ = "posts"

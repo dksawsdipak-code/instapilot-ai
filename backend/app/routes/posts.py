@@ -12,6 +12,7 @@ from app.schemas import (
     PostCreate,
     PostResponse,
     PostSchedule,
+    PostUpdate,
 )
 from app.services.ai import AIService
 
@@ -56,14 +57,49 @@ def get_posts(
         .all()
     )
 
+@router.put("/posts/{post_id}", response_model=PostResponse)
+def update_post(
+    post_id: int,
+    post_update: PostUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update an existing draft or scheduled post."""
+    if not post_update.content.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Post content cannot be empty",
+        )
+
+    post = db.query(Post).filter(Post.id == post_id, Post.user_id == current_user.id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    if post.status == "published":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Published posts cannot be edited",
+        )
+
+    post.content = post_update.content.strip()
+    post.media_url = post_update.media_url
+    post.scheduled_at = post_update.scheduled_at
+    post.status = "scheduled" if post_update.scheduled_at else "draft"
+    db.commit()
+    db.refresh(post)
+    return post
+
 @router.post("/ideas", response_model=ContentIdeaResponse)
 def generate_content_ideas(request: ContentIdeaRequest):
     """Generate creator-specific caption, hooks, hashtags, and pillars."""
     return ai_service.create_creator_ideas(
         niche=request.niche,
         creator_type=request.creator_type,
+        target_audience=request.target_audience,
         goal=request.goal,
         tone=request.tone,
+        offer=request.offer,
+        content_pillars=request.content_pillars,
+        count=request.count,
     )
 
 @router.post("/posts/{post_id}/schedule")

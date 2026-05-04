@@ -38,6 +38,11 @@ class PostCreate(BaseModel):
     media_url: Optional[str] = None
     scheduled_at: Optional[datetime] = None
 
+class PostUpdate(BaseModel):
+    content: str
+    media_url: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+
 class PostResponse(BaseModel):
     id: int
     content: str
@@ -56,14 +61,47 @@ class PostSchedule(BaseModel):
 class ContentIdeaRequest(BaseModel):
     niche: str
     creator_type: str = "creator"
+    target_audience: str = ""
     goal: str = "grow engagement"
     tone: str = "friendly"
+    offer: str = ""
+    content_pillars: str = ""
+    count: int = 6
+
+class GeneratedIdea(BaseModel):
+    title: str
+    format: str
+    pillar: str
+    hook: str
+    caption: str
+    cta: str
+    hashtags: List[str]
 
 class ContentIdeaResponse(BaseModel):
     caption: str
     hooks: List[str]
     hashtags: List[str]
     content_pillars: List[str]
+    ideas: List[GeneratedIdea]
+    provider: str = "local"
+
+class CreatorProfileBase(BaseModel):
+    niche: str = ""
+    creator_type: str = ""
+    target_audience: str = ""
+    growth_goal: str = ""
+    brand_tone: str = ""
+    offer: str = ""
+    content_pillars: str = ""
+
+class CreatorProfileResponse(CreatorProfileBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 # Subscription Schemas
 class SubscriptionResponse(BaseModel):

@@ -13,7 +13,7 @@ def initialize_database():
     """Initialize database tables if they don't exist."""
     try:
         from app.db import Base, engine
-        from app.models import User, InstagramAccount, Post, Subscription
+        from app.models import CreatorProfile, User, InstagramAccount, Post, Subscription
         
         logger.info("Initializing database tables...")
         Base.metadata.create_all(bind=engine)
@@ -41,13 +41,14 @@ app.add_middleware(
 )
 
 # Import routes
-from app.routes import auth, instagram, posts, billing
+from app.routes import auth, instagram, posts, billing, profile
 
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(instagram.router, prefix="/api/instagram", tags=["instagram"])
 app.include_router(posts.router, prefix="/api/posts", tags=["posts"])
 app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
+app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
 
 @app.get("/")
 def read_root():

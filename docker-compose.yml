@@ -27,6 +27,8 @@ services:
       dockerfile: Dockerfile
     container_name: instapilot_backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - ./backend/.env
     ports:
       - "8000:8000"
     environment:
@@ -48,6 +50,8 @@ services:
       dockerfile: Dockerfile
     container_name: instapilot_celery_worker
     command: celery -A app.worker worker --loglevel=info
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql://user:password@postgres:5432/instapilot_db
       REDIS_URL: redis://redis:6379
