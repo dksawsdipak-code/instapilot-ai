@@ -3,7 +3,7 @@ Pydantic schemas for request/response validation.
 """
 
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 # User Schemas
@@ -41,11 +41,29 @@ class PostCreate(BaseModel):
 class PostResponse(BaseModel):
     id: int
     content: str
+    media_url: Optional[str] = None
     status: str
+    scheduled_at: Optional[datetime] = None
+    published_at: Optional[datetime] = None
     created_at: datetime
     
     class Config:
         from_attributes = True
+
+class PostSchedule(BaseModel):
+    scheduled_at: datetime
+
+class ContentIdeaRequest(BaseModel):
+    niche: str
+    creator_type: str = "creator"
+    goal: str = "grow engagement"
+    tone: str = "friendly"
+
+class ContentIdeaResponse(BaseModel):
+    caption: str
+    hooks: List[str]
+    hashtags: List[str]
+    content_pillars: List[str]
 
 # Subscription Schemas
 class SubscriptionResponse(BaseModel):
@@ -55,4 +73,3 @@ class SubscriptionResponse(BaseModel):
     
     class Config:
         from_attributes = True
-

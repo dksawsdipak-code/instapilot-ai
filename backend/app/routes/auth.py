@@ -19,14 +19,15 @@ from typing import Optional
 
 router = APIRouter()
 
-def get_current_user(token: str = Header(None), db: Session = Depends(get_db)) -> User:
+def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)) -> User:
     """Dependency to get current authenticated user from token."""
-    if not token:
+    if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     # Remove "Bearer " prefix if present
-    if token.startswith("Bearer "):
-        token = token[7:]
+    token = authorization
+    if authorization.startswith("Bearer "):
+        token = authorization[7:]
     
     payload = verify_token(token)
     if not payload:
@@ -36,7 +37,7 @@ def get_current_user(token: str = Header(None), db: Session = Depends(get_db)) -
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == int(user_id)).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -66,8 +67,8 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     
     # Generate tokens
-    access_token = create_access_token(data={"sub": new_user.id})
-    refresh_token = create_refresh_token(data={"sub": new_user.id})
+    access_token = create_access_token(data={"sub": str(new_user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(new_user.id)})
     
     return {
         "access_token": access_token,
@@ -95,8 +96,8 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
         )
     
     # Generate tokens
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
     return {
         "access_token": access_token,
@@ -132,4 +133,3 @@ def get_current_user_info(current_user: User = Depends(get_current_user)):
 def logout():
     """Logout user (client should discard tokens)."""
     return {"message": "Logged out successfully"}
-

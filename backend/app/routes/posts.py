@@ -1,36 +1,114 @@
-"""
-Post management routes.
-"""
+"""Post management routes."""
 
-from fastapi import APIRouter, Depends
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.schemas import PostCreate, PostResponse
+from app.models import Post, User
+from app.routes.auth import get_current_user
+from app.schemas import (
+    ContentIdeaRequest,
+    ContentIdeaResponse,
+    PostCreate,
+    PostResponse,
+    PostSchedule,
+)
+from app.services.ai import AIService
 
 router = APIRouter()
+ai_service = AIService()
 
 @router.post("/create", response_model=PostResponse)
-def create_post(post: PostCreate, db: Session = Depends(get_db)):
+def create_post(
+    post: PostCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Create a new post draft."""
-    # TODO: Implement post creation
-    return {"id": 1, "content": post.content, "status": "draft"}
+    if not post.content.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Post content cannot be empty",
+        )
 
-@router.get("/posts")
-def get_posts(db: Session = Depends(get_db)):
+    db_post = Post(
+        user_id=current_user.id,
+        content=post.content.strip(),
+        media_url=post.media_url,
+        scheduled_at=post.scheduled_at,
+        status="scheduled" if post.scheduled_at else "draft",
+    )
+    db.add(db_post)
+    db.commit()
+    db.refresh(db_post)
+    return db_post
+
+@router.get("/posts", response_model=list[PostResponse])
+def get_posts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Get all posts for the user."""
-    return {"posts": []}
+    return (
+        db.query(Post)
+        .filter(Post.user_id == current_user.id)
+        .order_by(Post.created_at.desc())
+        .all()
+    )
+
+@router.post("/ideas", response_model=ContentIdeaResponse)
+def generate_content_ideas(request: ContentIdeaRequest):
+    """Generate creator-specific caption, hooks, hashtags, and pillars."""
+    return ai_service.create_creator_ideas(
+        niche=request.niche,
+        creator_type=request.creator_type,
+        goal=request.goal,
+        tone=request.tone,
+    )
 
 @router.post("/posts/{post_id}/schedule")
-def schedule_post(post_id: int, db: Session = Depends(get_db)):
+def schedule_post(
+    post_id: int,
+    schedule: PostSchedule,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Schedule a post for publishing."""
-    return {"message": "Post scheduled"}
+    post = db.query(Post).filter(Post.id == post_id, Post.user_id == current_user.id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    post.scheduled_at = schedule.scheduled_at
+    post.status = "scheduled"
+    db.commit()
+    db.refresh(post)
+    return post
 
 @router.post("/posts/{post_id}/publish")
-def publish_post(post_id: int, db: Session = Depends(get_db)):
+def publish_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Publish a post immediately."""
-    return {"message": "Post published"}
+    post = db.query(Post).filter(Post.id == post_id, Post.user_id == current_user.id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    post.status = "published"
+    post.published_at = datetime.utcnow()
+    db.commit()
+    db.refresh(post)
+    return post
 
 @router.delete("/posts/{post_id}")
-def delete_post(post_id: int, db: Session = Depends(get_db)):
+def delete_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Delete a post."""
+    post = db.query(Post).filter(Post.id == post_id, Post.user_id == current_user.id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    db.delete(post)
+    db.commit()
     return {"message": "Post deleted"}

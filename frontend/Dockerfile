@@ -1,6 +1,8 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
+
+ENV NEXT_PUBLIC_API_URL=http://backend:8000
 
 # Copy package files
 COPY package*.json ./
